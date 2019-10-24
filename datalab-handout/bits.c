@@ -201,6 +201,7 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
+	
 }
 /* 
  * conditional - same as x ? y : z 
@@ -210,7 +211,9 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+	int a = ~(!x) + 1;  // x > 0: 0  x = 0: 111111...111
+	int b = ((~a) & y) | (a & z)
+  return b;
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
