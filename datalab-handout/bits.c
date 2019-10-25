@@ -165,7 +165,7 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return !(~(x + 1) ^ x);
+  return (!(~(x + 1) ^ x)) & (!!(~x));
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -176,9 +176,10 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-	int a = x & (~(x >> 1));
-	int b = !(~(a & (a >> 1)));
-  return b;
+	// 10101010b = 128 + 32 + 8 + 2 = 170
+	int a = 170;
+	a = a + (a << 8) + (a << 16) + (a << 24);
+	return !((a & x) ^ a);
 }
 /* 
  * negate - return -x 
@@ -201,7 +202,13 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-	
+	int right3 = x & 7; // 111b	
+	int right3_8 = !right3;
+	int right3_9 = !(right3 ^ 1);
+	int left = x >> 3;
+	int is0_7 = !(left ^ 6); // 110b
+	int may89 = !(left ^ 7); // 111b
+	return is0_7 | (may89 & (right3_8 | right3_9));
 }
 /* 
  * conditional - same as x ? y : z 
@@ -212,7 +219,7 @@ int isAsciiDigit(int x) {
  */
 int conditional(int x, int y, int z) {
 	int a = ~(!x) + 1;  // x > 0: 0  x = 0: 111111...111
-	int b = ((~a) & y) | (a & z)
+	int b = ((~a) & y) | (a & z);
   return b;
 }
 /* 
@@ -223,7 +230,14 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+	int signX = (x >> 31) & 1;
+	int signY = (y >> 31) & 1;
+	int a = signX & (!signY); // x < 0, y >= 0
+	int minusY = ~y + 1;
+	int b = !(signX ^ signY) & ((x + minusY) >> 31); // x, y have same sign, x - y < 0;
+	int c = !(x ^ y);  // x == y
+
+	return a | b | c;
 }
 //4
 /* 
