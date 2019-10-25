@@ -212,7 +212,7 @@ int isAsciiDigit(int x) {
  */
 int conditional(int x, int y, int z) {
 	int a = ~(!x) + 1;  // x > 0: 0  x = 0: 111111...111
-	int b = ((~a) & y) | (a & z)
+	int b = ((~a) & y) | (a & z);
   return b;
 }
 /* 
