@@ -279,7 +279,11 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+	unsigned frac = (uf & 0x007fffff);
+	unsigned exp = (uf & 0x7f800000) >> 23;
+	if (exp == 0xff && frac != 0) return uf;
+	exp = exp * 2;
+	return (uf & 0x807fffff) | (exp << 23);
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -294,6 +298,7 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
+	
   return 2;
 }
 /* 
@@ -310,5 +315,20 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+	int exp_min = -126;
+	int exp_max = 127;
+	int frac;
+	int frac_shift;	
+	if (x > 127) {
+		return 0x7f800000;
+	} else if (x < -126) {
+		frac_shift = 23 + (x + 126);
+		printf("%d\n", frac_shift);
+		if (frac_shift < 0) {return 0;}
+		printf("%d\n", frac_shift);
+		frac = (1 << frac_shift);
+		return 0 | frac;
+	} else {
+		return (x + 127) << 23;	
+	}
 }
