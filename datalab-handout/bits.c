@@ -315,19 +315,16 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-	int exp_min = -126;
-	int exp_max = 127;
-	int frac;
+	// int exp_min = -126;
+	// int exp_max = 127;
 	int frac_shift;	
 	if (x > 127) {
 		return 0x7f800000;
+	} else if(x < -149) {
+		return 0;
 	} else if (x < -126) {
 		frac_shift = 23 + (x + 126);
-		printf("%d\n", frac_shift);
-		if (frac_shift < 0) {return 0;}
-		printf("%d\n", frac_shift);
-		frac = (1 << frac_shift);
-		return 0 | frac;
+		return (1 << frac_shift);
 	} else {
 		return (x + 127) << 23;	
 	}
