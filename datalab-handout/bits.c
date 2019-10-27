@@ -249,7 +249,9 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+	int y = ~x + 1; // y == -x except for Tmin
+	int result = ((x ^ (~y)) >> 31) & ((~x) >> 31) & 1;
+  return result;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -257,14 +259,34 @@ int logicalNeg(int x) {
  *            howManyBits(298) = 10
  *            howManyBits(-5) = 4
  *            howManyBits(0)  = 1
- *            howManyBits(-1) = 1
- *            howManyBits(0x80000000) = 32
- *  Legal ops: ! ~ & ^ | + << >>
- *  Max ops: 90
- *  Rating: 4
+ *            howmanybits(-1) = 1
+ *            howmanybits(0x80000000) = 32
+ *  legal ops: ! ~ & ^ | + << >>
+ *  max ops: 90
+ *  rating: 4
  */
-int howManyBits(int x) {
-  return 0;
+int howmanybits(int x) {
+	int shift1,shift2,shift4,shift8,shift16;
+	int sum;
+	int t=((!x)<<31)>>31;//x为0时，t（二进制）全为1，x不为0时，全为1
+	int t2=((!~x)<<31)>>31;//当x为-1时，t2全为1，否则，全为0
+	//printf("x=%x\n",x);
+	int op=x^((x>>31));//正数不变，负数取反
+	//printf("op=%x\n!!(op>>16)=%x\n",op,!!(op>>16));
+	shift16=(!!(op>>16))<<4;//如果高十六位全为0，则0左移4位，不全为0，则1左移4（表示op要右移2^4位）位
+	op=op>>shift16;
+	shift8=(!!(op>>8))<<3;
+	op=op>>shift8;
+	shift4=(!!(op>>4))<<2;
+	op=op>>shift4;
+	shift2=(!!(op>>2))<<1;
+	op=op>>shift2;
+	shift1=(!!(op>>1));
+	op=op>>shift1;
+	//printf("shift16=%x shift8=%x shift4=%x shift2=%xshift1=%x\n",shift16,shift8,shift4,shift2,shift1);
+	sum=2+shift16+shift8+shift4+shift2+shift1;
+	//printf("t=%x sum=%x\n",t,sum);
+	return(t2&1)|((~t2)&((t&1)|((~t)&sum)));
 }
 //float
 /* 
