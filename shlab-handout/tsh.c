@@ -184,6 +184,7 @@ void eval(char *cmdline)
         Sigprocmask(SIG_BLOCK, &mask_chld, &prev_chld);
         if ((pid = fork()) == 0) {
             Sigprocmask(SIG_SETMASK, &prev_chld, NULL);
+            setpgid(0, 0);
             if (execve(argv[0], argv, environ) == -1) {
                 printf("Command not found: %s\n", argv[0]);
                 exit(0);
@@ -309,7 +310,7 @@ void sigchld_handler(int sig)
     sigset_t mask_all, prev_all;
     Sigfillset(&mask_all);
 
-    while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
+    while ((pid = waitpid(-1, NULL, WNOHANG )) > 0) {
         Sigprocmask(SIG_SETMASK, &mask_all, &prev_all);
         if (verbose) {
             Sio_puts("deleting pid=");
