@@ -12,9 +12,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include "csapp.h"
 
 /* Misc manifest constants */
-#define MAXLINE    1024   /* max line size */
+// conflicts with MAXLINE in csapp.h
+// #define MAXLINE    1024   /* max line size */
 #define MAXARGS     128   /* max args on a command line */
 #define MAXJOBS      16   /* max jobs at any point in time */
 #define MAXJID    1<<16   /* max job ID */
@@ -80,10 +82,12 @@ int pid2jid(pid_t pid);
 void listjobs(struct job_t *jobs);
 
 void usage(void);
-void unix_error(char *msg);
-void app_error(char *msg);
-typedef void handler_t(int);
-handler_t *Signal(int signum, handler_t *handler);
+
+// have declared in csapp.h
+// void unix_error(char *msg);
+// void app_error(char *msg);
+// typedef void handler_t(int);
+// handler_t *Signal(int signum, handler_t *handler);
 
 /*
  * main - The shell's main routine 
@@ -273,6 +277,8 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    printf("\n");
+    exit(0);
     return;
 }
 
@@ -461,39 +467,41 @@ void usage(void)
     exit(1);
 }
 
-/*
- * unix_error - unix-style error routine
- */
-void unix_error(char *msg)
-{
-    fprintf(stdout, "%s: %s\n", msg, strerror(errno));
-    exit(1);
-}
 
-/*
- * app_error - application-style error routine
- */
-void app_error(char *msg)
-{
-    fprintf(stdout, "%s\n", msg);
-    exit(1);
-}
+// have implemented in csapp.c
+// /*
+//  * unix_error - unix-style error routine
+//  */
+// void unix_error(char *msg)
+// {
+//     fprintf(stdout, "%s: %s\n", msg, strerror(errno));
+//     exit(1);
+// }
 
-/*
- * Signal - wrapper for the sigaction function
- */
-handler_t *Signal(int signum, handler_t *handler) 
-{
-    struct sigaction action, old_action;
+// /*
+//  * app_error - application-style error routine
+//  */
+// void app_error(char *msg)
+// {
+//     fprintf(stdout, "%s\n", msg);
+//     exit(1);
+// }
 
-    action.sa_handler = handler;  
-    sigemptyset(&action.sa_mask); /* block sigs of type being handled */
-    action.sa_flags = SA_RESTART; /* restart syscalls if possible */
+// /*
+//  * Signal - wrapper for the sigaction function
+//  */
+// handler_t *Signal(int signum, handler_t *handler) 
+// {
+//     struct sigaction action, old_action;
 
-    if (sigaction(signum, &action, &old_action) < 0)
-	unix_error("Signal error");
-    return (old_action.sa_handler);
-}
+//     action.sa_handler = handler;  
+//     sigemptyset(&action.sa_mask); /* block sigs of type being handled */
+//     action.sa_flags = SA_RESTART; /* restart syscalls if possible */
+
+//     if (sigaction(signum, &action, &old_action) < 0)
+// 	unix_error("Signal error");
+//     return (old_action.sa_handler);
+// }
 
 /*
  * sigquit_handler - The driver program can gracefully terminate the
