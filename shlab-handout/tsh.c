@@ -3,7 +3,7 @@
  * 
  * <Put your name and login ID here>
  */
-#define _POSIX_C_SOURCE 1
+#define _POSIX_C_SOURCE 2
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -83,6 +83,7 @@ int pid2jid(pid_t pid);
 void listjobs(struct job_t *jobs);
 
 void usage(void);
+int isnumber(char *s);
 
 // have declared in csapp.h
 // void unix_error(char *msg);
@@ -186,7 +187,7 @@ void eval(char *cmdline)
             Sigprocmask(SIG_SETMASK, &prev_chld, NULL);
             setpgid(0, 0);
             if (execve(argv[0], argv, environ) == -1) {
-                printf("Command not found: %s\n", argv[0]);
+                printf("%s: Command not found\n", argv[0]);
                 exit(0);
             }
         }
@@ -272,12 +273,41 @@ int builtin_cmd(char **argv)
     }
 
     if (!strcmp(argv[0], "bg")) {
+        if (!argv[1]){
+            printf("fg command requires PID or %%jobid argument\n");
+            return 1;
+        }
         /* no error handling */
-        int jid;
-        char *jid_s = argv[1];
-        jid_s ++;
-        jid = atoi(jid_s);
-        struct job_t *job = getjobjid(jobs, jid);
+        int jid, pid;
+        char *jid_pid_s = argv[1];
+        struct job_t *job;
+        errno = 0;
+        /* %jid */
+        if (jid_pid_s[0] == '%'){
+            jid_pid_s ++;
+            if (!isnumber(jid_pid_s)) {
+                printf("argument must be a PID or %%jobid\n");
+                return 1;
+            }
+            jid = atoi(jid_pid_s);
+            job = getjobjid(jobs, jid);
+            if (!job){
+                printf("%%%d: No such job\n", jid);
+                return 1;
+            }
+        /* pid */
+        } else {
+            if (!isnumber(jid_pid_s)) {
+                printf("argument must be a PID or %%jobid\n");
+                return 1;
+            }
+            pid = atoi(jid_pid_s);
+            job = getjobpid(jobs, pid);
+            if (!job){
+                printf("(%d): No such process\n", pid);
+                return 1;
+            }
+        }
 
         job->state = BG;
         printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
@@ -286,14 +316,44 @@ int builtin_cmd(char **argv)
     }
 
     if (!strcmp(argv[0], "fg")) {
+        if (!argv[1]){
+            printf("fg command requires PID or %%jobid argument\n");
+            return 1;
+        }
         /* no error handling */
-        int jid;
-        char *jid_s = argv[1];
-        jid_s ++;
-        jid = atoi(jid_s);
-        struct job_t *job = getjobjid(jobs, jid);
+        int jid, pid;
+        char *jid_pid_s = argv[1];
+        struct job_t *job;
+        errno = 0;
+        /* %jid */
+        if (jid_pid_s[0] == '%'){
+            jid_pid_s ++;
+            if (!isnumber(jid_pid_s)) {
+                printf("argument must be a PID or %%jobid\n");
+                return 1;
+            }
+            jid = atoi(jid_pid_s);
+            job = getjobjid(jobs, jid);
+            if (!job){
+                printf("%%%d: No such job\n", jid);
+                return 1;
+            }
+        /* pid */
+        } else {
+            if (!isnumber(jid_pid_s)) {
+                printf("argument must be a PID or %%jobid\n");
+                return 1;
+            }
+            pid = atoi(jid_pid_s);
+            job = getjobpid(jobs, pid);
+            if (!job){
+                printf("(%d): No such process\n", pid);
+                return 1;
+            }
+        }
+
         job->state = FG;
-        kill(job->pid, SIGCONT);
+        kill(-job->pid, SIGCONT);
         waitfg(job->pid);
         return 1;
         
@@ -334,11 +394,34 @@ void sigchld_handler(int sig)
     int old_errno = errno;
     int status;
     pid_t pid;
+    struct job_t *job;
 
     sigset_t mask_all, prev_all;
     Sigfillset(&mask_all);
 
-    while ((pid = waitpid(-1, NULL, WNOHANG )) > 0) {
+    while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED )) > 0) {
+        job = getjobpid(jobs, pid);
+        if (WIFSIGNALED(status)) {
+            Sio_puts("Job [");
+            Sio_putl((long)job->jid);
+            Sio_puts("] (");
+            Sio_putl((long)job->pid);
+            Sio_puts(") terminated by signal ");
+            Sio_putl((long)WTERMSIG(status));
+            Sio_puts("\n");
+        }
+
+        if (WIFSTOPPED(status)) {
+            Sio_puts("Job [");
+            Sio_putl((long)job->jid);
+            Sio_puts("] (");
+            Sio_putl((long)job->pid);
+            Sio_puts(") stopped by signal ");
+            Sio_putl((long)WSTOPSIG(status));
+            Sio_puts("\n");
+            job->state = ST;
+            continue;
+        }
         Sigprocmask(SIG_SETMASK, &mask_all, &prev_all);
         if (verbose) {
             Sio_puts("deleting pid=");
@@ -368,15 +451,7 @@ void sigint_handler(int sig)
     if (fgpid_ == 0) {
         exit(0);
     } else {
-        struct job_t *job = getjobpid(jobs, fgpid_);
-        Sio_puts("Job [");
-        Sio_putl((long)job->jid);
-        Sio_puts("] (");
-        Sio_putl((long)job->pid);
-        Sio_puts(") terminated by signal ");
-        Sio_putl((long)SIGINT);
-        Sio_puts("\n");
-        kill(fgpid_, SIGINT);
+        kill(-fgpid_, SIGINT);
     }
 }
 
@@ -392,16 +467,7 @@ void sigtstp_handler(int sig)
     if (fgpid_ == 0) {
         return;
     } else {
-        struct job_t *job = getjobpid(jobs, fgpid_);
-        Sio_puts("Job [");
-        Sio_putl((long)job->jid);
-        Sio_puts("] (");
-        Sio_putl((long)job->pid);
-        Sio_puts(") stopped by signal ");
-        Sio_putl((long)SIGTSTP);
-        Sio_puts("\n");
-        job->state = ST;
-        kill(fgpid_, SIGTSTP);
+        kill(-fgpid_, SIGTSTP);
     }
     return;
 }
@@ -627,5 +693,10 @@ void sigquit_handler(int sig)
     exit(1);
 }
 
-
+int isnumber(char *s) {
+    while(*s) {
+        if (!isdigit(*s++)) return 0;
+    }
+    return 1;
+}
 
