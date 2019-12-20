@@ -270,6 +270,34 @@ int builtin_cmd(char **argv)
         listjobs(jobs);
         return 1;
     }
+
+    if (!strcmp(argv[0], "bg")) {
+        /* no error handling */
+        int jid;
+        char *jid_s = argv[1];
+        jid_s ++;
+        jid = atoi(jid_s);
+        struct job_t *job = getjobjid(jobs, jid);
+
+        job->state = BG;
+        printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+        kill(job->pid, SIGCONT);
+        return 1;
+    }
+
+    if (!strcmp(argv[0], "fg")) {
+        /* no error handling */
+        int jid;
+        char *jid_s = argv[1];
+        jid_s ++;
+        jid = atoi(jid_s);
+        struct job_t *job = getjobjid(jobs, jid);
+        job->state = FG;
+        kill(job->pid, SIGCONT);
+        waitfg(job->pid);
+        return 1;
+        
+    }
     return 0;     /* not a builtin command */
 }
 
