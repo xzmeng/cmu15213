@@ -320,6 +320,10 @@ void sigchld_handler(int sig)
         Sigprocmask(SIG_SETMASK, &prev_all, NULL);
     }
 
+    if (pid == -1 && errno != ECHILD) {
+        Sio_error("sigchld_handler error!\n");
+    }
+
     errno = old_errno;
 }
 
@@ -330,9 +334,21 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-    printf("\n");
-    exit(0);
-    return;
+    int fgpid_ = fgpid(jobs);
+    /* No foreground job, exit the shell */
+    if (fgpid_ == 0) {
+        exit(0);
+    } else {
+        struct job_t *job = getjobpid(jobs, fgpid_);
+        Sio_puts("Job [");
+        Sio_putl((long)job->jid);
+        Sio_puts("] (");
+        Sio_putl((long)job->pid);
+        Sio_puts(") terminated by signal ");
+        Sio_putl((long)SIGINT);
+        Sio_puts("\n");
+        kill(fgpid_, SIGINT);
+    }
 }
 
 /*
@@ -342,6 +358,22 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    int fgpid_ = fgpid(jobs);
+    /* No foreground job, do nothing */
+    if (fgpid_ == 0) {
+        return;
+    } else {
+        struct job_t *job = getjobpid(jobs, fgpid_);
+        Sio_puts("Job [");
+        Sio_putl((long)job->jid);
+        Sio_puts("] (");
+        Sio_putl((long)job->pid);
+        Sio_puts(") stopped by signal ");
+        Sio_putl((long)SIGTSTP);
+        Sio_puts("\n");
+        job->state = ST;
+        kill(fgpid_, SIGTSTP);
+    }
     return;
 }
 
