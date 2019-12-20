@@ -3,6 +3,7 @@
  * 
  * <Put your name and login ID here>
  */
+#define _POSIX_C_SOURCE 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -170,11 +171,29 @@ int main(int argc, char **argv)
 void eval(char *cmdline) 
 {
     char *argv[MAXARGS];
+    pid_t pid;
     int bg;
     bg = parseline(cmdline, argv);
 
+    sigset_t mask_chld, mask_all, prev_chld;
+    Sigfillset(&mask_all);
+    Sigemptyset(&mask_chld);
+    Sigaddset(&mask_chld, SIGCHLD);
+
     if (!builtin_cmd(argv)) {
-        
+        Sigprocmask(SIG_BLOCK, &mask_chld, &prev_chld);
+        if ((pid = fork()) == 0) {
+            Sigprocmask(SIG_SETMASK, &prev_chld, NULL);
+            if (execve(argv[0], argv, environ) == -1) {
+                printf("Command not found: %s\n", argv[0]);
+                exit(0);
+            }
+        }
+        Sigprocmask(SIG_BLOCK, &mask_all, NULL);
+        addjob(jobs, pid, bg?BG:FG, cmdline);
+        Sigprocmask(SIG_SETMASK, &prev_chld, NULL);
+        bg ? printf("[%d] (%d) %s", getjobpid(jobs, pid)->jid, pid, cmdline) :
+            waitfg(pid);
     }
     return;
 }
@@ -261,6 +280,7 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    while (pid == fgpid(jobs));
     return;
 }
 
@@ -277,6 +297,25 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
+    int old_errno = errno;
+    int status;
+    pid_t pid;
+
+    sigset_t mask_all, prev_all;
+    Sigfillset(&mask_all);
+
+    while ((pid = wait(&status)) > 0) {
+        Sigprocmask(SIG_SETMASK, &mask_all, &prev_all);
+        deletejob(jobs, pid);
+        Sigprocmask(SIG_SETMASK, &prev_all, NULL);
+    }
+
+    if (errno != ECHILD) {
+        Sio_puts("sigchld_handler error!");
+        exit(-1);
+    }
+
+    errno = old_errno;
     return;
 }
 

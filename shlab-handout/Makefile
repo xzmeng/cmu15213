@@ -8,7 +8,7 @@ TSH = ./tsh
 TSHREF = ./tshref
 TSHARGS = "-p"
 CC = gcc
-CFLAGS = -Wall -Og
+CFLAGS = -Wall -Og -g
 LDLIBS = -lpthread
 FILES = $(TSH) ./myspin ./mysplit ./mystop ./myint
 
