@@ -264,6 +264,11 @@ int builtin_cmd(char **argv)
     if (!strcmp(argv[0], "quit")) {
         exit(0);
     }
+    
+    if (!strcmp(argv[0], "jobs")) {
+        listjobs(jobs);
+        return 1;
+    }
     return 0;     /* not a builtin command */
 }
 
@@ -304,19 +309,18 @@ void sigchld_handler(int sig)
     sigset_t mask_all, prev_all;
     Sigfillset(&mask_all);
 
-    while ((pid = wait(&status)) > 0) {
+    while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
         Sigprocmask(SIG_SETMASK, &mask_all, &prev_all);
+        if (verbose) {
+            Sio_puts("deleting pid=");
+            Sio_putl((long)pid);
+            Sio_puts(" from jobs.\n");
+        }
         deletejob(jobs, pid);
         Sigprocmask(SIG_SETMASK, &prev_all, NULL);
     }
 
-    if (errno != ECHILD) {
-        Sio_puts("sigchld_handler error!");
-        exit(-1);
-    }
-
     errno = old_errno;
-    return;
 }
 
 /* 
